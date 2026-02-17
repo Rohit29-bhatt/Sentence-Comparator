@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Comparison</title>
+    <style>
+		.container{
+		display:flex;
+		justify-content:space-between;
+		padding-left:10px;
+		padding-right:10px;
+		}
+		.textarea-container{
+		flex:1;
+		margin:0 20 px;
+		}
+        .mismatch {
+            background-color: yellow;
+        }
+        button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+    </style>
+</head>
+<body>
+<p style="text-align:center;font-weight:bold; font-size:25px;">Sentence Comparator</p>
+<div class="container">
+<div class="textarea-container">
+	<p style="font-size:20px"> Enter PDF Text Here:</p>
+    <textarea id="pdfText" placeholder="Enter PDF text here..." rows="10" cols="50"></textarea>
+	</div>
+    <br>
+	<div class="textarea-container" >
+	<p style="font-size:20px">Enter Email Text Here:</p>
+    <textarea id="emailText" placeholder="Enter Email text here..." rows="10" cols="50" ></textarea>
+	</div>
+	</div>
+    <br>
+    <div style="text-align:center;">
+    <button onclick="compareSentences()" >Compare Sentences</button></div>
+	<br>
+	<br>
+    <div style="margin-bottom:15px; font-size:13px;">
+    <b>Note:</b><br><br>
+
+    <span style="background-color:orange; padding:4px;">
+        Orange Highlight
+    </span>
+    &nbsp; = Content present in PDF but missing or changed in Email
+    <br><br>
+
+    <span style="background-color:red; color:white; padding:4px;">
+        Red Highlight
+    </span>
+    &nbsp; = Additional content present in Email but not in PDF
+</div><br>
+	<p style="font-size:20px;font-weight:bold;">
+PDF Reference View – Differences Highlighted:
+</p>
+
+<div id="result"></div>
+
+<br><br>
+
+<p style="font-size:20px;font-weight:bold;">
+Email Version – Additional Content Highlighted:
+</p>
+
+<div id="extraword"></div>
+
+ 
+   <script>
+
+function tokenize(text) {
+    return text.replace(/\r\n/g, "\n").match(/\S+|\n/g) || [];
+}
+
+function compareSentences() {
+
+    const pdfText = document.getElementById("pdfText").value;
+    const emailText = document.getElementById("emailText").value;
+
+    const pdfTokens = tokenize(pdfText);
+    const emailTokens = tokenize(emailText);
+
+    const resultDiv = document.getElementById("result");
+    const extraDiv = document.getElementById("extraword");
+
+    let resultHTML = "";
+    let extraHTML = "";
+
+    // LCS matrix
+    const dp = Array(pdfTokens.length + 1).fill(null)
+        .map(() => Array(emailTokens.length + 1).fill(0));
+
+    for (let i = pdfTokens.length - 1; i >= 0; i--) {
+        for (let j = emailTokens.length - 1; j >= 0; j--) {
+            if (pdfTokens[i] === emailTokens[j]) {
+                dp[i][j] = dp[i+1][j+1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i+1][j], dp[i][j+1]);
+            }
+        }
+    }
+
+    let i = 0, j = 0;
+
+    while (i < pdfTokens.length && j < emailTokens.length) {
+
+        if (pdfTokens[i] === emailTokens[j]) {
+
+            // Result section (PDF view)
+            if (pdfTokens[i] === "\n") {
+                resultHTML += "<br>";
+                extraHTML += "<br>";
+            } else {
+                resultHTML += pdfTokens[i] + " ";
+                extraHTML += emailTokens[j] + " ";
+            }
+
+            i++; j++;
+        }
+        else if (dp[i+1][j] >= dp[i][j+1]) {
+
+            // Missing in email → highlight in Result only
+            if (pdfTokens[i] === "\n") {
+                resultHTML += "<br>";
+            } else {
+                resultHTML += `<span style="background-color:orange;font-weight:bold;">${pdfTokens[i]}</span> `;
+            }
+            i++;
+        }
+        else {
+
+            // Extra in email → highlight in Extra section only
+            if (emailTokens[j] === "\n") {
+                extraHTML += "<br>";
+            } else {
+                extraHTML += `<span style="background-color:red;color:white;font-weight:bold;">${emailTokens[j]}</span> `;
+            }
+            j++;
+        }
+    }
+
+    // Remaining PDF words
+    while (i < pdfTokens.length) {
+        if (pdfTokens[i] === "\n") {
+            resultHTML += "<br>";
+        } else {
+            resultHTML += `<span style="background-color:orange;font-weight:bold;">${pdfTokens[i]}</span> `;
+        }
+        i++;
+    }
+
+    // Remaining Email words
+    while (j < emailTokens.length) {
+        if (emailTokens[j] === "\n") {
+            extraHTML += "<br>";
+        } else {
+            extraHTML += `<span style="background-color:red;color:white;font-weight:bold;">${emailTokens[j]}</span> `;
+        }
+        j++;
+    }
+
+    resultDiv.innerHTML = resultHTML;
+    extraDiv.innerHTML = extraHTML;
+}
+
+</script>
+
+</body>
+</html>
